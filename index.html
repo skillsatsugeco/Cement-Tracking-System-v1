@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <!-- Local Development Links -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart & QR Libs -->
+    <!-- QR Scanner Lib -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <header>
+        <h1>🏗️ CementTrack</h1>
+        <div id="geo-status" class="status-pill status-error">📍 Locating...</div>
+    </header>
+
+    <main>
+        <!-- VIEW: HOME / DASHBOARD -->
+        <div id="home" class="view active">
+            <div class="card">
+                <h2>Project Metrics</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="text-center p-2" style="background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        <div id="stat-total-bags"
+                            style="font-size: 2rem; font-weight: bold; color: var(--accent-color);">--</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Bags</div>
+                    </div>
+                    <div class="text-center p-2" style="background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        <div id="stat-efficiency"
+                            style="font-size: 2rem; font-weight: bold; color: var(--success-color);">--%</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Efficiency</div>
+                    </div>
+                </div>
+                <!-- CHART CONTAINER -->
+                <div style="position: relative; height: 200px; width: 100%;">
+                    <canvas id="efficiencyChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Quick Actions</h2>
+                <button class="btn btn-primary" onclick="switchView('scan')" style="margin-bottom: 0.5rem;">
+                    📸 Scan Bag
+                </button>
+                <button class="btn btn-secondary" onclick="switchView('register')">
+                    🏭 Register Batch (Supervisor)
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW: SCANNER -->
+        <div id="scan" class="view">
+            <div class="card">
+                <h2>Scan QR Code</h2>
+                <div id="reader"></div>
+                <p class="text-center" style="font-size: 0.85rem; color: var(--text-secondary);">
+                    Point camera at the bag label
+                </p>
+                <button class="btn btn-secondary" onclick="switchView('home')">Cancel</button>
+            </div>
+        </div>
+
+        <!-- VIEW: USAGE FORM -->
+        <div id="usage" class="view">
+            <div class="card">
+                <h2>Record Usage</h2>
+                <form id="form-usage">
+                    <div class="form-group">
+                        <label>Bag ID</label>
+                        <input type="text" id="usage-bag-id" readonly placeholder="Scan a bag...">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Verification Photo</label>
+                        <input type="file" id="usage-photo" accept="image/*" capture="environment" required>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
+                            Take a photo of the open bag.
+                        </p>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Submit Record</button>
+                    <button type="button" class="btn btn-secondary" onclick="switchView('home')">Cancel</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- VIEW: REGISTER BATCH -->
+        <div id="register" class="view">
+            <div class="card">
+                <h2>Register New Batch</h2>
+                <form id="form-register">
+                    <div class="form-group">
+                        <label>Plant Code</label>
+                        <input type="text" id="reg-plant" value="P01" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Batch Number</label>
+                        <input type="text" id="reg-batch" placeholder="e.g. B-105" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="reg-count" value="50" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Generate IDs</button>
+                    <button type="button" class="btn btn-secondary" onclick="switchView('home')">Cancel</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- PRINT VIEW (Hidden by default) -->
+        <div id="print" class="view">
+            <div class="card no-print-style">
+                <h2>Batch Generated!</h2>
+                <p>Ready to print. Please use A4 paper.</p>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="window.print()">🖨️ Print Labels</button>
+                    <button class="btn btn-secondary" onclick="switchView('home')">Done</button>
+                </div>
+            </div>
+            <div id="print-container">
+                <!-- Labels injected here -->
+            </div>
+        </div>
+
+    </main>
+
+    <nav>
+        <button class="nav-btn active" data-target="home">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span>Home</span>
+        </button>
+        <button class="nav-btn" data-target="scan">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"></path>
+            </svg>
+            <span>Scan</span>
+        </button>
+        <button class="nav-btn" data-target="usage">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span>Logs</span>
+        </button>
+    </nav>
+
+    <!-- Local Script -->
+    <script src="script.js"></script>
+</body>
+
+</html>

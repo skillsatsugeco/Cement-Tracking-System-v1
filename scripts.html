@@ -1,0 +1,245 @@
+<script>
+    /**
+     * Global State
+     */
+    let currentUser = { id: 'worker-001', role: 'worker', siteId: 'site-alpha' }; // Mock auth
+    let currentGeo = null;
+    let html5QrcodeScanner = null;
+
+    // DOM Elements
+    const views = document.querySelectorAll('.view');
+    const navBtns = document.querySelectorAll('.nav-btn');
+
+    /**
+     * Navigation
+     */
+    function switchView(viewId) {
+        // Update view visibility
+        views.forEach(v => v.classList.remove('active'));
+        document.getElementById(viewId).classList.add('active');
+
+        // Update nav state
+        navBtns.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.target === viewId);
+        });
+
+        // Specific view logic
+        if (viewId === 'scan') startScanner();
+        else stopScanner();
+    }
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchView(btn.dataset.target));
+    });
+
+    /**
+     * Geolocation
+     */
+    function updateLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    currentGeo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    document.getElementById('geo-status').textContent = '📍 Location Locked';
+                    document.getElementById('geo-status').classList.replace('status-error', 'status-success');
+                },
+                (err) => {
+                    console.warn('Geo error', err);
+                    document.getElementById('geo-status').textContent = '⚠️ Location Missing';
+                }
+            );
+        }
+    }
+
+    /**
+     * QR Scanner Logic
+     */
+    function startScanner() {
+        if (html5QrcodeScanner) return; // Already running
+
+        // Wait for library to load
+        const checkLib = setInterval(() => {
+            if (window.Html5Qrcode) {
+                clearInterval(checkLib);
+                initScanner();
+            }
+        }, 100);
+    }
+
+    function initScanner() {
+        const html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+            .then(() => {
+                html5QrcodeScanner = html5QrCode;
+            })
+            .catch(err => console.error("Error starting scanner", err));
+    }
+
+    function stopScanner() {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.stop().then(() => {
+                html5QrcodeScanner.clear();
+                html5QrcodeScanner = null;
+            }).catch(err => console.error("Failed to stop scanner", err));
+        }
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+        // Handle the scanned code
+        console.log(`Scan result: ${decodedText}`);
+        stopScanner(); // Stop after successful scan
+
+        // Pre-fill form or trigger action
+        document.getElementById('usage-bag-id').value = decodedText;
+        switchView('usage'); // Switch to usage form
+        playBeep();
+    }
+
+    function playBeep() {
+        // Simple success sound
+        const audio = new Audio('https://freetestdata.com/wp-content/uploads/2021/09/Free_Test_Data_100KB_MP3.mp3'); // Placeholder
+        // audio.play().catch(e => console.log(e));
+    }
+
+    /**
+     * Forms & Server Actions
+     */
+
+    // Handle Usage Form
+    document.getElementById('form-usage').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button');
+        const originalText = btn.innerText;
+        btn.innerText = 'Processing...';
+        btn.disabled = true;
+
+        const bagId = document.getElementById('usage-bag-id').value;
+        const fileInput = document.getElementById('usage-photo');
+
+        const processSubmission = (base64Photo) => {
+            const payload = {
+                bag_id: bagId,
+                worker_id: currentUser.id,
+                site_id: currentUser.siteId,
+                photo_base64: base64Photo,
+                geo: currentGeo
+            };
+
+            google.script.run
+                .withSuccessHandler((res) => {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    if (res.success) {
+                        alert("Usage Recorded!");
+                        e.target.reset();
+                        switchView('home');
+                    } else {
+                        alert("Error: " + res.error);
+                    }
+                })
+                .withFailureHandler((err) => {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    alert("System Error: " + err.message);
+                })
+                .recordUsage(payload);
+        };
+
+        // Convert file to base64 if present
+        if (fileInput.files.length > 0) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                // Split to get base64 part only
+                const base64 = e.target.result.split(',')[1];
+                processSubmission(base64);
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            processSubmission(null);
+        }
+    });
+
+    // Handle Register Form
+    document.getElementById('form-register').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerText;
+        btn.innerText = 'Registering...';
+        btn.disabled = true;
+
+        const plant = document.getElementById('reg-plant').value;
+        const batch = document.getElementById('reg-batch').value;
+        const count = parseInt(document.getElementById('reg-count').value);
+
+        google.script.run
+            .withSuccessHandler((res) => {
+                btn.innerText = originalText;
+                btn.disabled = false;
+                alert(`Success! Generated ${res.count} bag IDs.`);
+                switchView('home');
+                loadDashboard(); // Refresh stats
+            })
+            .withFailureHandler((err) => {
+                btn.innerText = originalText;
+                btn.disabled = false;
+                alert("Error: " + err.message);
+            })
+            .registerBatch(plant, batch, count);
+    });
+
+    let dashboardChart = null;
+
+    function renderChart() {
+        const ctx = document.getElementById('efficiencyChart').getContext('2d');
+        if (dashboardChart) dashboardChart.destroy();
+
+        dashboardChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Production',
+                    data: [65, 59, 80, 81, 56, 125, 100], // Mock data specific to construction
+                    borderColor: '#f97316',
+                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { display: false },
+                    y: {
+                        display: true,
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+    }
+
+    function loadDashboard() {
+        google.script.run
+            .withSuccessHandler((stats) => {
+                const elTotal = document.getElementById('stat-total-bags');
+                if (elTotal) elTotal.innerText = stats.totalBags;
+                renderChart(); // Render visual graphic
+            })
+            .getDashboardStats();
+    }
+
+    // Initial Setup
+    window.onload = () => {
+        updateLocation();
+        loadDashboard();
+        // Request camera permissions early if possible
+    };
+</script>
