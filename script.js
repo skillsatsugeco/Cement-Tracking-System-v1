@@ -2,7 +2,7 @@
  * Global State
  */
 // 1. Paste your Web App URL here:
-const API_URL = "https://script.google.com/macros/s/AKfycbzW51G-ZPRLvFOgjjzBoavjITXB7Gp9V4cFiTvSUk-G5IB5cZW16yRWqK0CifEZXF_J/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzMMF6GwQSFu4HTTOxSURlrvfxDu5ExAsKpoiUxImsp5iHn3g8EqIxeoZ2pY1vyfOdR/exec";
 
 let currentUser = { id: 'worker-001', role: 'worker', siteId: 'site-alpha' }; // Mock auth
 let currentGeo = null;
@@ -125,6 +125,18 @@ function playBeep() {
  * Forms & Server Actions
  */
 
+// Handle Manual ID Entry from Scan Screen
+document.getElementById('btn-manual-submit').addEventListener('click', () => {
+    const manualInput = document.getElementById('manual-id-input');
+    const id = manualInput.value.trim();
+    if (id) {
+        onScanSuccess(id, null); // Reuse the scan success logic
+        manualInput.value = ''; // Clear input
+    } else {
+        alert("Please enter a valid Bag ID.");
+    }
+});
+
 // Handle Usage Form
 document.getElementById('form-usage').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -148,7 +160,8 @@ document.getElementById('form-usage').addEventListener('submit', async (e) => {
         try {
             const res = await callApi('recordUsage', payload);
             if (res.success) {
-                alert("Usage Recorded!");
+                // detailed debug message
+                alert(`Usage Recorded!\nDatabase Update: ${res.bag_found ? "SUCCESS" : "FAILED"}\n(Searched ID: ${res.searched_for})`);
                 e.target.reset();
                 switchView('home');
             } else {
@@ -265,8 +278,14 @@ function renderChart() {
 function loadDashboard() {
     callApi('getDashboardStats')
         .then(stats => {
-            const elTotal = document.getElementById('stat-total-bags');
-            if (elTotal) elTotal.innerText = stats.totalBags;
+            // DEBUG: Check what the server is actually sending
+            // alert("Server Response: " + JSON.stringify(stats)); 
+
+            document.getElementById('stat-total-bags').innerText = stats.totalBags;
+            // Display Used Count instead of Efficiency %
+            // Fallback for old backend version check
+            const usedText = (stats.usedCount !== undefined) ? stats.usedCount : "Old Ver";
+            document.getElementById('stat-used-bags').innerText = usedText;
             renderChart();
         })
         .catch(err => console.error("Dashboard Load Failed", err));
