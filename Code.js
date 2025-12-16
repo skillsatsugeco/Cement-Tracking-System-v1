@@ -73,8 +73,8 @@ function getSpreadsheet() {
 
 function setupDatabase() {
     const ss = getSpreadsheet();
-    // Simplified schema init
-    const requiredSheets = ['Bags', 'UsageRecords', 'Plants', 'Workers', 'Sites'];
+    // Simplified schema init: Only Bags and UsageRecords
+    const requiredSheets = ['Bags', 'UsageRecords'];
 
     requiredSheets.forEach(name => {
         if (!ss.getSheetByName(name)) {
@@ -133,9 +133,31 @@ function registerBatch(plantCode, batch, count) {
 function getDashboardStats() {
     const ss = getSpreadsheet();
     const bags = ss.getSheetByName('Bags');
-    if (!bags) return { totalBags: 0 };
+    if (!bags) return { totalBags: 0, efficiency: "0%" };
+
+    const lastRow = bags.getLastRow();
+    if (lastRow <= 1) return { totalBags: 0, efficiency: "0%" };
+
+    const totalBags = lastRow - 1; // Exclude header
+
+    // Calculate Usage / Efficiency
+    const range = bags.getRange(2, 5, totalBags, 1);
+    const statuses = range.getValues();
+
+    let usedCount = 0;
+    for (let i = 0; i < statuses.length; i++) {
+        if (statuses[i][0] === 'USED') {
+            usedCount++;
+        }
+    }
+
+    // Efficiency calculation
+    const efficiency = totalBags > 0 ? Math.round((usedCount / totalBags) * 100) : 0;
+
     return {
-        totalBags: Math.max(0, bags.getLastRow() - 1)
+        totalBags: totalBags,
+        efficiency: efficiency + "%",
+        usedCount: usedCount
     };
 }
 
@@ -145,12 +167,11 @@ function recordUsage(payload) {
 
     try {
         const ss = getSpreadsheet();
-        let sheet = ss.getSheetByName('UsageRecords');
-        if (!sheet) { setupDatabase(); sheet = ss.getSheetByName('UsageRecords'); }
+        let usageSheet = ss.getSheetByName('UsageRecords');
+        if (!usageSheet) { setupDatabase(); usageSheet = ss.getSheetByName('UsageRecords'); }
 
-        // Check validation of bag, etc. (Skipped for brevity in this fix, can re-add)
-
-        sheet.appendRow([
+        // 1. Record the usage event
+        usageSheet.appendRow([
             Utilities.getUuid(),
             payload.bag_id,
             payload.worker_id,
@@ -159,14 +180,23 @@ function recordUsage(payload) {
             payload.photo_base64 ? "HAS_PHOTO" : "NO_PHOTO"
         ]);
 
-        // Mark bag used
+        // 2. Update Bag Status to 'USED' in 'Bags' sheet
+        let bagUpdated = false;
         const bagsSheet = ss.getSheetByName('Bags');
         if (bagsSheet) {
-            // Search and update (Optimized)
-            // For speed in this fix, we just return success, but in prod we'd search row
+            const data = bagsSheet.getDataRange().getValues();
+            for (let i = 1; i < data.length; i++) { // Skip header
+                // Loose comparison for robustness
+                if (String(data[i][0]).trim() == String(payload.bag_id).trim()) {
+                    // Update Status (Col 5)
+                    bagsSheet.getRange(i + 1, 5).setValue('USED');
+                    bagUpdated = true;
+                    break;
+                }
+            }
         }
 
-        return { success: true };
+        return { success: true, bag_found: bagUpdated, searched_for: payload.bag_id };
     } finally {
         lock.releaseLock();
     }
