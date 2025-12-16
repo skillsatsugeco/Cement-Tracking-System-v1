@@ -29,9 +29,9 @@
                         <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Bags</div>
                     </div>
                     <div class="text-center p-2" style="background: rgba(255,255,255,0.05); border-radius: 8px;">
-                        <div id="stat-efficiency"
-                            style="font-size: 2rem; font-weight: bold; color: var(--success-color);">--%</div>
-                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Efficiency</div>
+                        <div id="stat-used-bags"
+                            style="font-size: 2rem; font-weight: bold; color: var(--success-color);">--</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Used Bags</div>
                     </div>
                 </div>
                 <!-- CHART CONTAINER -->
@@ -59,6 +59,16 @@
                 <p class="text-center" style="font-size: 0.85rem; color: var(--text-secondary);">
                     Point camera at the bag label
                 </p>
+
+                <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                    <p style="text-align: center; margin-bottom: 0.5rem; color: var(--text-muted);">OR Enter ID Manually
+                    </p>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="manual-id-input" placeholder="e.g. CEM-P01-...">
+                        <button class="btn btn-primary" id="btn-manual-submit" style="width: auto;">Go</button>
+                    </div>
+                </div>
+
                 <button class="btn btn-secondary" onclick="switchView('home')">Cancel</button>
             </div>
         </div>
@@ -127,31 +137,7 @@
 
     </main>
 
-    <nav>
-        <button class="nav-btn active" data-target="home">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-            <span>Home</span>
-        </button>
-        <button class="nav-btn" data-target="scan">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"></path>
-            </svg>
-            <span>Scan</span>
-        </button>
-        <button class="nav-btn" data-target="usage">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-            <span>Logs</span>
-        </button>
-    </nav>
+    <!-- Navigation Removed for Single Page Experience -->
 
     <!-- Local Script -->
     <script src="script.js"></script>
