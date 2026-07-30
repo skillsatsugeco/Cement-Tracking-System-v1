@@ -2,7 +2,7 @@
  * Global State
  */
 // 1. Paste your Web App URL here:
-const API_URL = "https://script.google.com/macros/s/AKfycbzMMF6GwQSFu4HTTOxSURlrvfxDu5ExAsKpoiUxImsp5iHn3g8EqIxeoZ2pY1vyfOdR/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwvMdiY1w7yspnp6bDYKKUoBwsdDZ_eMT9qdT76Szwcj0h6AKK_fUAyu_w7TICLA4ZuNA/exec";
 
 let currentUser = { id: 'worker-001', role: 'worker', siteId: 'site-alpha' }; // Mock auth
 let currentGeo = null;
