@@ -5,7 +5,12 @@
 
 // 1. Handle CORS (Allow local file requests)
 function doGet(e) {
-    return ContentService.createTextOutput("Cement API is Online. Use POST requests for actions.");
+    try {
+        var dbUrl = getSpreadsheet().getUrl();
+        return ContentService.createTextOutput("Cement API is Online.\nDatabase URL: " + dbUrl);
+    } catch (err) {
+        return ContentService.createTextOutput("Cement API is Online. Use POST requests for actions.");
+    }
 }
 
 function doPost(e) {
@@ -23,6 +28,9 @@ function doPost(e) {
 
         // Route action
         switch (action) {
+            case 'getDatabaseUrl':
+                result = { url: getSpreadsheet().getUrl() };
+                break;
             case 'getDashboardStats':
                 result = getDashboardStats();
                 break;
